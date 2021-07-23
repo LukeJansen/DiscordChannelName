@@ -1,6 +1,6 @@
 {
   "name": "discordchannelnicknamebot",
-  "version": "1.0.4",
+  "version": "1.1.0",
   "description": "Discord Bot that changes nicknames by channel!",
   "main": "bot.js",
   "scripts": {
@@ -9,7 +9,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "discord.js": "^12.5.3"
+    "discord.js": "^12.5.3",
+    "mongoose": "^5.13.3"
   },
   "devDependencies": {
     "dotenv": "^8.6.0",
