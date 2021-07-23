@@ -26,8 +26,13 @@ client.on('message', async (msg) => {
 
     if (userID == client.user.id) return
 
-    if (voiceState == null){
-        msg.channel.send("You are not in a voice channel! Please join a channel and then reissue this command")
+    if (!member.voice.channel){
+        msg.channel.send("You are not in a voice channel! Please join a channel and then reissue this command").then(function (message) {
+            message.react("🗑️")
+        }).catch(function() {
+            console.log("ERROR!")
+        });
+        msg.delete()
         return
     }
 
@@ -37,7 +42,11 @@ client.on('message', async (msg) => {
         case "!cn ":
             try {
                 if (msg.guild.owner.id == msg.author.id) {
-                    return msg.channel.send("Sorry Server Owners cannot use Channel Nickname Bot :(")
+                    return msg.channel.send("Sorry Server Owners cannot use Channel Nickname Bot :(").then(function (message) {
+                        message.react("🗑️")
+                    }).catch(function() {
+                        console.log("ERROR!")
+                    });
                 }
                 if (userID in users){
                     users[userID].channels[channelID] = text.substr(4)
@@ -57,7 +66,11 @@ client.on('message', async (msg) => {
             }
             catch (error){
                 console.error(error)
-                return msg.channel.send("Something went wrong! Oops! Get <@275348412797550595> to have a look.")
+                return msg.channel.send("Something went wrong! Oops! Get <@275348412797550595> to have a look.").then(function (message) {
+                    message.react("🗑️")
+                }).catch(function() {
+                    console.log("ERROR!")
+                });
             }
             break
         case "!cnr":
@@ -67,7 +80,11 @@ client.on('message', async (msg) => {
             break
         case "!cnd":
             if (msg.guild.owner.id == msg.author.id) {
-                return msg.channel.send("Sorry Server Owners cannot use Channel Nickname Bot :(")
+                return msg.channel.send("Sorry Server Owners cannot use Channel Nickname Bot :(").then(function (message) {
+                    message.react("🗑️")
+                }).catch(function() {
+                    console.log("ERROR!")
+                });
             }
             if (userID in users){
                 users[userID].default = text.substr(5)
@@ -81,7 +98,12 @@ client.on('message', async (msg) => {
             msg.react("✅").then(() => msg.react('🗑️'))
             break
         case "!cn?":
-            return msg.channel.send("❔ Channel Nickname Bot Help! ❔ \n!cn - Set nickname for current voice channel. \n!cnd - Set default nickname for when you are not in a nicknamed channel. \n!cnr - Reset all stored nicknames for yourself. \n!cn? - View this help message.")
+            msg.delete()
+            return msg.channel.send("❔ Channel Nickname Bot Help! ❔ \n!cn - Set nickname for current voice channel. \n!cnd - Set default nickname for when you are not in a nicknamed channel. \n!cnr - Reset all stored nicknames for yourself. \n!cn? - View this help message.").then(function (message) {
+                message.react("🗑️")
+            }).catch(function() {
+                console.log("ERROR!")
+            });
             break
     }
 })
@@ -112,12 +134,23 @@ client.on('messageReactionAdd', async (reaction, user) => {
 		try {
 			await reaction.fetch();
 		} catch (error) {
-			console.log('Something went wrong when fetching the message: ', error);
+			console.log('Something went wrong when fetching the message: ', error).then(function (message) {
+                message.react("🗑️")
+            }).catch(function() {
+                console.log("ERROR!")
+            });
 			return;
 		}
-	}
+    }
+    
+    console.log(reaction.count)
 
-	if (reaction.users.cache.has(reaction.message.author.id) && reaction._emoji.name == "🗑️"){
+    if (reaction.users.cache.has(client.user.id) && reaction._emoji.name == "🗑️"){
+        console.log("Delete 2")
+        if (reaction.count >= 2) reaction.message.delete()
+    }
+    else if (reaction.users.cache.has(reaction.message.author.id) && reaction._emoji.name == "🗑️"){
+        console.log("Delete 1")
         reaction.message.delete()
     }
 });
