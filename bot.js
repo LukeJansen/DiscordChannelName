@@ -73,6 +73,9 @@ client.on('message', async (msg) => {
             }
             msg.react("✅").then(() => msg.react('🗑️'))
             break
+        case "!cn?":
+            return msg.channel.send("❔ Channel Nickname Bot Help! ❔ \n!cn - Set nickname for current voice channel. \n!cnd - Set default nickname for when you are not in a nicknamed channel. \n!cnr - Reset all stored nicknames for yourself. \n!cn? - View this help message.")
+            break
     }
 })
 
