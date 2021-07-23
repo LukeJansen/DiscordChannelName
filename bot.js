@@ -36,8 +36,12 @@ client.on('message', async (msg) => {
     switch(text.substr(0, 4)){
         case "!cn ":
             try {
+                if (msg.guild.owner.id == msg.author.id) {
+                    return msg.channel.send("Sorry Server Owners cannot use Channel Nickname Bot :(")
+                }
                 if (userID in users){
                     users[userID].channels[channelID] = text.substr(4)
+                    member.setNickname(text.substr(4))
                 }
                 else{
                     users[userID] = {
@@ -62,6 +66,9 @@ client.on('message', async (msg) => {
             msg.react("✅").then(() => msg.react('🗑️'))
             break
         case "!cnd":
+            if (msg.guild.owner.id == msg.author.id) {
+                return msg.channel.send("Sorry Server Owners cannot use Channel Nickname Bot :(")
+            }
             if (userID in users){
                 users[userID].default = text.substr(5)
             }
