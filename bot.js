@@ -2,9 +2,11 @@ if (process.env.NODE_ENV !== 'production') {
     require('dotenv').config()
 }
 
-const Discord = require("discord.js")
+const wait = require('util').promisify(setTimeout);
+const {Client, Intent, Intents} = require("discord.js")
 const mongoose = require('mongoose')
-const client = new Discord.Client();
+const {version} = require("./package.json")
+
 
 mongoose.connect(process.env.DB_URL, {useNewUrlParser:true, useUnifiedTopology:true})
 const db = mongoose.connection
@@ -27,86 +29,108 @@ const userSchema = new mongoose.Schema({
 })
 
 const User = mongoose.model('User', userSchema)
-users = {}
 
-// const userTemplate = {
-//     channels: {},
-//     default: ""
-// }
+const client = new Client({ intents: [Intents.FLAGS.GUILD_VOICE_STATES, Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.GUILD_MESSAGE_REACTIONS, Intents.FLAGS.GUILD_INTEGRATIONS] });
 
-client.on('ready', () => {
-    console.log(`Logged in as ${client.user.tag}`)
+const commands = [
+    {
+        name:'cn',
+        description: 'Set nickname for current voice channel',
+        options: [
+            {
+                "name": "nickname",
+                "description": "The nickname for this channel",
+                "type": 'STRING',
+                "required": true
+            }
+        ]
+    },
+    {
+        name:'cndefault',
+        description: 'Set default nickname',
+        options: [
+            {
+                "name": "nickname",
+                "description": "The default nickname for you",
+                "type": 'STRING',
+                "required": true
+            }
+        ]
+    },
+    {
+        name:'cnreset',
+        description: 'Reset all your nicknames'
+    },
+    {
+        name:'cnhelp',
+        description: 'View all commmands for Channel Nickname Bot'
+    }
+]
+
+client.on('ready', async () => {
+    console.log(`Logged in as ${client.user.tag}\n`)
+    await client.guilds.cache.get('726511820436930622')?.commands.set(commands)
     client.user.setUsername("Channel Nickname Bot")
 })
 
-client.on('message', async (msg) => {
+client.on('interactionCreate', async (interaction) => {
 
-    const text = msg.content
-    const userID = msg.author.id
-    const voiceState = msg.guild.voiceStates.cache.get(userID)
-    const member = msg.channel.guild.member(msg.author)
+    if (!interaction.isCommand()) return;
 
-    if (userID == client.user.id) return
+    const nickname = interaction.options.getString('nickname')
+    const member = interaction.member
+    const userID = interaction.guildId
+    const ownerID = '269146867818823691'
+    const voiceState = member.guild.voiceStates.cache.get(interaction.user.id)
+    console.log(client.guilds.fetch('726511820436930622'))
 
-    if (!member.voice.channel && text.substr(0,4) == "!cn "){
-        msg.channel.send("You are not in a voice channel! Please join a channel and then reissue this command").then(function (message) {
-            message.react("🗑️")
-        }).catch(function() {
-            console.log("ERROR!")
-        });
-        msg.delete()
-        return
-    }
-    
-    switch(text.substr(0, 4)){
-        case "!cn ":
+    switch(interaction.commandName){
+        case "cn":
+
+            if (nickname == null || nickname == "" || nickname.length < 2 || nickname.length > 32){
+                await interaction.reply({ content: "Sorry! Nicknames must be between 2 and 32 characters long. ❌", ephemeral: true })
+                return
+            }
+            else if (ownerID == userID) {
+                await interaction.reply({ content: "Sorry! Server owners cannot yet use this bot 😭", ephemeral: true })
+                return
+            }
+
             try {
-                var user = await User.findOne({userID: member.id})
-                const channelID = voiceState.channelID
-
-                if (msg.guild.ownerID == msg.author.id) {
-                    return msg.channel.send("Sorry Server Owners cannot use Channel Nickname Bot :(").then(function (message) {
-                        message.react("🗑️")
-                    }).catch(function() {
-                        console.log("ERROR!")
-                    });
-                }
+                var user = await User.findOne({userID: userID})
+                const channelID = voiceState.channelId
 
                 if (user != null){
-                    user.channels.set(channelID, text.substr(4))
+                    user.channels.set(channelID, nickname)
                     await user.save()
 
-                    member.setNickname(text.substr(4))
+                    member.setNickname(nickname)
                 }
                 else{
                     var newUser = new User({userID: member.id, channels: {}, default: member.user.username})
-                    newUser.channels.set(channelID, text.substr(4))
+                    newUser.channels.set(channelID, nickname)
                     await newUser.save()
 
-                    member.setNickname(text.substr(4))
+                    member.setNickname(nickname)
                 }
 
-                msg.react("✅").then(() => msg.react('🗑️'))
+                await interaction.reply({ content: "Nickname Set! ✔️", ephemeral: true })
             }
             catch (error){
                 console.error(error)
-                return msg.channel.send("Something went wrong! Oops! Get <@275348412797550595> to have a look.").then(function (message) {
-                    message.react("🗑️")
-                }).catch(function() {
-                    console.log("ERROR!")
-                });
+                await interaction.reply({ content: "Something went wrong! Oops! Get <@275348412797550595> to have a look.", ephemeral: false })
             }
             break
 
-        case "!cnr":
+        case "cnreset":
             
             await User.deleteOne({userID: member.id})
             
             member.setNickname("")
-            msg.react("✅").then(() => msg.react('🗑️'))
+            await interaction.reply({ content: "All nicknames have been reset! ✔️", ephemeral: true })
             break
 
-        case "!cnd":
+        case "cndefault":
             var user = await User.findOne({userID: member.id})
             
             if (msg.guild.ownerID == msg.author.id) {
@@ -130,7 +154,7 @@ client.on('message', async (msg) => {
 
             msg.react("✅").then(() => msg.react('🗑️'))
             break
-        case "!cn?":
+        case "cnhelp":
             msg.delete()
             return msg.channel.send("❔ Channel Nickname Bot Help! ❔ \n!cn - Set nickname for current voice channel. \n!cnd - Set default nickname for when you are not in a nicknamed channel. \n!cnr - Reset all stored nicknames for yourself. \n!cn? - View this help message.").then(function (message) {
                 message.react("🗑️")
@@ -144,15 +168,16 @@ client.on('message', async (msg) => {
 client.on("voiceStateUpdate", async function(oldMember, newMember){
 
     const userID = newMember.member.id
+    const channelID = newMember.channelId
     const user = await User.findOne({userID: userID})
 
     if (user != null){
         
-        if (newMember.channelID == null){
+        if (channelID == null){
             newMember.member.setNickname(user.default)
             return
         }
-        const channelID = newMember.channel.id
+        
 
         if (user.channels.get(channelID) != null){
             newMember.member.setNickname(user.channels.get(channelID))
@@ -160,28 +185,6 @@ client.on("voiceStateUpdate", async function(oldMember, newMember){
         else{
             newMember.member.setNickname(user.default)
         }
-    }
-});
-
-client.on('messageReactionAdd', async (reaction, user) => {
-	if (reaction.partial) {
-		try {
-			await reaction.fetch();
-		} catch (error) {
-			console.log('Something went wrong when fetching the message: ', error).then(function (message) {
-                message.react("🗑️")
-            }).catch(function() {
-                console.log("ERROR!")
-            });
-			return;
-		}
-    }
-
-    if (reaction.users.cache.has(client.user.id) && reaction._emoji.name == "🗑️"){
-        if (reaction.count >= 2) reaction.message.delete()
-    }
-    else if (reaction.users.cache.has(reaction.message.author.id) && reaction._emoji.name == "🗑️"){
-        reaction.message.delete()
     }
 });
 
