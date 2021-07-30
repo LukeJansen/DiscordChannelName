@@ -77,6 +77,22 @@ const commands = [
     }
 ]
 
+function logVC(channelID, userID, nickname){
+    console.info(`[INFO] ${userID} joined voice channel ${channelID} and was assigned nickname ${nickname}.`)
+}
+
+function logCN(channelID, userID, nickname){
+    console.info(`[INFO] ${userID} asssigned nickname ${nickname} to ${channelID}.`)
+}
+
+function logCND(userID, nickname){
+    console.info(`[INFO] ${userID} asssigned default nickname ${nickname}.`)
+}
+
+function logCNR(userID, nickname){
+    console.info(`[INFO] ${userID} reset all nicknames.`)
+}
+
 client.on('ready', async () => {
     console.log(`Logged in as ${client.user.tag}\n`)
 
@@ -126,14 +142,16 @@ client.on('interactionCreate', async (interaction) => {
                 if (user != null){
                     user.channels.set(channelID, nickname)
                     await user.save()
-
+                    
+                    logCN(channelID, userID, nickname)
                     member.setNickname(nickname)
                 }
                 else{
                     var newUser = new User({userID: member.id, channels: {}, default: member.user.username})
                     newUser.channels.set(channelID, nickname)
                     await newUser.save()
-
+                    
+                    logCN(channelID, userID, nickname)
                     member.setNickname(nickname)
                 }
 
@@ -178,10 +196,12 @@ client.on('interactionCreate', async (interaction) => {
             if (user != null){
                 user.default = nickname
                 await user.save()
+                logCND(userID, nickname)
             }
             else{
                 user = new User({userID: userID, channels: {}, default: nickname})
                 await user.save()
+                logCND(userID, nickname)
             }
 
             if (voiceState == null) member.setNickname(nickname)
@@ -214,6 +234,8 @@ client.on('interactionCreate', async (interaction) => {
             
             if (userID != ownerID) interaction.member.setNickname("")
 
+            logCNR(userID)
+
             await interaction.update( {content: "All nicknames have been reset! :white_check_mark:", components: [], ephemeral: true})
             break
 
@@ -235,15 +257,18 @@ client.on("voiceStateUpdate", async function(oldMember, newMember){
         
         if (channelID == null){
             newMember.member.setNickname(user.default)
+            logVC("DEFAULT", userID, user.default)
             return
         }
         
 
         if (user.channels.get(channelID) != null){
             newMember.member.setNickname(user.channels.get(channelID))
+            logVC(channelID, userID, user.channels.get(channelID))
         }
         else{
             newMember.member.setNickname(user.default)
+            logVC(channelID, userID, user.default)
         }
     }
 });
@@ -253,6 +278,6 @@ client.on('error', (e) => { console.error(e) })
 
 client.login(process.env.BOT_TOKEN)
 
-process.on('SIGTERM', () => {
-    client.user.setStatus("invisible")
-})
+process
+    .on('SIGTERM', () => client.user.setStatus("invisible"))
+    .on('SIGINT', () => client.user.setStatus("invisible"))
