@@ -2,7 +2,7 @@ if (process.env.NODE_ENV !== 'production') {
     require('dotenv').config()
 }
 
-const {Client, Intent, Intents} = require("discord.js")
+const {Client, Intent, Intents, MessageActionRow, MessageButton} = require("discord.js")
 const mongoose = require('mongoose')
 
 
@@ -57,7 +57,7 @@ const commands = [
     },
     {
         name:'cnreset',
-        description: 'Reset all your nicknames'
+        description: 'Reset all your nicknames (PROD)'
     },
     {
         name:'cnhelp',
@@ -79,10 +79,17 @@ const commands = [
 
 client.on('ready', async () => {
     console.log(`Logged in as ${client.user.tag}\n`)
-    await client.application?.commands.set(commands)
+
+    if (process.env.NODE_ENV !== 'production'){
+        await client.guilds.cache.get("726511820436930622")?.commands.set(commands)    
+    }
+    else {
+        await client.application?.commands.set(commands)
+    }
     client.user.setUsername("Channel Nickname Bot")
 })
 
+// Slash Command Interactions
 client.on('interactionCreate', async (interaction) => {
 
     if (!interaction.isCommand()) return;
@@ -138,11 +145,20 @@ client.on('interactionCreate', async (interaction) => {
             break
 
         case "cnreset":
-            
-            await User.deleteMany({userID: userID})
-            
-            if (userID != ownerID) member.setNickname("")
-            await interaction.reply({ content: "All nicknames have been reset! :white_check_mark:", ephemeral: true })
+
+            const row = new MessageActionRow().addComponents(
+                new MessageButton()
+                    .setCustomId('resetYes')
+                    .setLabel('Yes')
+                    .setStyle('SUCCESS'),
+                new MessageButton()
+                    .setCustomId('resetNo')
+                    .setLabel('No')
+                    .setStyle('DANGER')
+            )
+
+            await interaction.reply( {content: 'Are you sure you want to reset all nicknames?', components: [row], ephemeral: true})
+        
             break
 
         case "cndefault":
@@ -182,6 +198,31 @@ client.on('interactionCreate', async (interaction) => {
             
     }
 })
+
+// Button Interactions
+client.on('interactionCreate', async (interaction) => {
+	if (!interaction.isButton()) return;
+
+    const userID = interaction.user.id
+    const ownerID = interaction.member.guild.ownerID
+	
+    switch(interaction.customId){
+        case "resetYes":
+
+            await User.deleteMany({userID: userID})
+            
+            if (userID != ownerID) interaction.member.setNickname("")
+
+            await interaction.update( {content: "All nicknames have been reset! :white_check_mark:", components: [], ephemeral: true})
+            break
+
+        case "resetNo":
+            await interaction.update( {content: "No nicknames have been reset! ❌", components: [], ephemeral: true})
+            break
+    }
+
+    
+});
 
 client.on("voiceStateUpdate", async function(oldMember, newMember){
 
