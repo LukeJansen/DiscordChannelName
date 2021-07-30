@@ -28,7 +28,7 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema)
 
-const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_VOICE_STATES, Intents.FLAGS.GUILD_MESSAGES] });
+const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_VOICE_STATES, Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.GUILD_PRESENCES] });
 
 const commands = [
     {
@@ -80,13 +80,14 @@ const commands = [
 client.on('ready', async () => {
     console.log(`Logged in as ${client.user.tag}\n`)
 
-    if (process.env.NODE_ENV !== 'production'){
-        await client.guilds.cache.get("726511820436930622")?.commands.set(commands)    
-    }
-    else {
-        await client.application?.commands.set(commands)
-    }
+    await client.application?.commands.set(commands)
+
     client.user.setUsername("Channel Nickname Bot")
+    client.user.setStatus("online")
+    client.user.setActivity({
+        name: "/cnhelp",
+        type: "LISTENING" //PLAYING: WATCHING: LISTENING: STREAMING:
+    })
 })
 
 // Slash Command Interactions
@@ -251,3 +252,7 @@ client.on('warning', (e) => { console.error(e) })
 client.on('error', (e) => { console.error(e) })
 
 client.login(process.env.BOT_TOKEN)
+
+process.on('SIGTERM', () => {
+    client.user.setStatus("invisible")
+})
