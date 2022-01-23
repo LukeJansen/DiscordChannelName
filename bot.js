@@ -74,6 +74,17 @@ const commands = [
                 required: true
             }
         ]
+    },{
+        name:'egirl',
+        description: 'Moan at daddy',
+        options: [
+            {
+                name: "daddy",
+                description: "The daddy you want to nya at",
+                type: 'USER',
+                required: true
+            }
+        ]
     }
 ]
 
@@ -209,7 +220,7 @@ client.on('interactionCreate', async (interaction) => {
             await interaction.reply({ content: "Default Nickname Set! :white_check_mark:", ephemeral: true })
             break
         case "cnhelp":
-            await interaction.reply({ content: "❔ Channel Nickname Bot Help! ❔ \n/cn {nickname}- Set nickname for current voice channel. \n/cndefault {nickname} - Set default nickname for when you are not in a nicknamed channel. \n/cnreset - Reset all stored nicknames for yourself. \n/cnhelp - View this help message.\n\n:tada: Meme Commands :tada:\n/gank {jungler} - Moan at the jungler who didn't gank you!", ephemeral: true })
+            await interaction.reply({ content: "❔ Channel Nickname Bot Help! ❔ \n/cn {nickname}- Set nickname for current voice channel. \n/cndefault {nickname} - Set default nickname for when you are not in a nicknamed channel. \n/cnreset - Reset all stored nicknames for yourself. \n/cnhelp - View this help message.\n\n:tada: Meme Commands :tada:\n/gank {jungler} - Moan at the jungler who didn't gank you!\n/egirl {daddy} - Moan at dadddy", ephemeral: true })
             break
 
         case "gank":
@@ -217,6 +228,10 @@ client.on('interactionCreate', async (interaction) => {
             await interaction.reply({ content: `:person_facepalming: <@${jungler}> why you no gank <@${userID}> :person_facepalming:`, ephemeral: false })
             break
             
+        case "egirl":
+            const daddy = interaction.options.get('daddy').value
+            await interaction.reply({ content: `✿乂◕‿◕乂 NYA <@${daddy}> SENPAI 乂◕‿◕乂✿`, ephemeral: false })
+            break
     }
 })
 
