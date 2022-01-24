@@ -74,7 +74,8 @@ const commands = [
                 required: true
             }
         ]
-    },{
+    },
+    {
         name:'egirl',
         description: 'Moan at daddy',
         options: [
