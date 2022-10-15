@@ -38,7 +38,10 @@ const commands = [
         .addUserOption(option => 
             option.setName("daddy")
                 .setDescription("The daddy you want to 'nya' at")
-                .setRequired(true))
+                .setRequired(true)),
+    new SlashCommandBuilder()
+                .setName('lolquiz')
+                .setDescription('Try your hand at the LoL Champion quiz!'),
 ]
 	.map(command => command.toJSON());
 

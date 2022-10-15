@@ -2,14 +2,15 @@ if (process.env.NODE_ENV !== 'production') {
     require('dotenv').config()
 }
 
-const {Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle} = require("discord.js")
+const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, codeBlock, ModalBuilder, TextInputBuilder, TextInputStyle, ActivityType } = require("discord.js")
 const mongoose = require('mongoose')
+const axios = require('axios');
 
 
-mongoose.connect(process.env.DB_URL, {useNewUrlParser:true, useUnifiedTopology:true})
+mongoose.connect(process.env.DB_URL, { useNewUrlParser: true, useUnifiedTopology: true })
 const db = mongoose.connection
 db.on('error', (error) => console.log("Database error: " + error))
-db.once('open', () => console.log("Database connected!\n "))
+db.once('open', () => console.log("[SETUP] Database connected!"))
 
 const userSchema = new mongoose.Schema({
     userID: {
@@ -30,31 +31,54 @@ const User = mongoose.model('User', userSchema)
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildPresences] });
 
-function logVC(channelID, channelName, userID, userName, nickname){
+var championData, currentChampion = -1
+
+function setupLOLQuiz() {
+    axios.get('https://ddragon.leagueoflegends.com/api/versions.json')
+        .then(function (response) {
+            var ddVersion = response.data[0]
+
+            axios.get(`http://ddragon.leagueoflegends.com/cdn/${ddVersion}/data/en_US/champion.json`)
+                .then(function (response) {
+                    responseData = response.data.data
+                    var championNames = Object.keys(responseData)
+                    var championValues = Object.values(responseData)
+
+                    championData = { championNames, championValues }
+                    console.log(`[SETUP] Loaded ${championNames.length} champions from DataDragon!\n`)
+                })
+                .catch(function (error) {
+                    console.log(error)
+                });
+        })
+        .catch(function (error) {
+            console.log(error)
+        })
+}
+
+function logVC(channelID, channelName, userID, userName, nickname) {
     console.info(`[INFO] ${userID} (${userName}) joined voice channel ${channelID} (${channelName}) and was assigned nickname '${nickname}'.`)
 }
 
-function logCN(channelID, channelName, userID, userName, nickname){
+function logCN(channelID, channelName, userID, userName, nickname) {
     console.info(`[INFO] ${userID} (${userName}) asssigned nickname '${nickname}' to ${channelID} (${channelName}).`)
 }
 
-function logCND(userID, userName, nickname){
+function logCND(userID, userName, nickname) {
     console.info(`[INFO] ${userID} (${userName}) asssigned default nickname '${nickname}'.`)
 }
 
-function logCNR(userID, userName){
+function logCNR(userID, userName) {
     console.info(`[INFO] ${userID} (${userName}) reset all nicknames.`)
 }
 
 client.on('ready', async () => {
-    console.log(`Logged in as ${client.user.tag}\n`)
+    console.log(`[SETUP] Logged in as ${client.user.tag}`)
+    setupLOLQuiz()
 
     client.user.setUsername("Channel Nickname Bot")
     client.user.setStatus("online")
-    client.user.setActivity({
-        name: "/cnhelp",
-        type: "LISTENING" //PLAYING: WATCHING: LISTENING: STREAMING:
-    })
+    client.user.setActivity('/cnhelp', { type: ActivityType.Listening });
 })
 
 // Slash Command Interactions
@@ -69,10 +93,10 @@ client.on('interactionCreate', async (interaction) => {
     const ownerID = member.guild.ownerId
     const voiceState = member.guild.voiceStates.cache.get(interaction.user.id)
 
-    switch(interaction.commandName){
+    switch (interaction.commandName) {
         case "cn":
 
-            if (nickname == null || nickname == "" || nickname.length < 2 || nickname.length > 32){
+            if (nickname == null || nickname == "" || nickname.length < 2 || nickname.length > 32) {
                 await interaction.reply({ content: ":x: Sorry! Nicknames must be between 2 and 32 characters long. :x:", ephemeral: true })
                 return
             }
@@ -82,35 +106,35 @@ client.on('interactionCreate', async (interaction) => {
             }
 
             try {
-                var user = await User.findOne({userID: userID})
+                var user = await User.findOne({ userID: userID })
 
-                if (voiceState == null){
+                if (voiceState == null) {
                     await interaction.reply({ content: ":x: You must be in a voice channel to use this command. :x:", ephemeral: true })
                     return
                 }
 
-                const channelID = voiceState.channelId  
-                const channelName = voiceState.channel.name          
+                const channelID = voiceState.channelId
+                const channelName = voiceState.channel.name
 
-                if (user != null){
+                if (user != null) {
                     user.channels.set(channelID, nickname)
                     await user.save()
-                    
+
                     logCN(channelID, channelName, userID, userName, nickname)
                     member.setNickname(nickname)
                 }
-                else{
-                    var newUser = new User({userID: member.id, channels: {}, default: member.user.username})
+                else {
+                    var newUser = new User({ userID: member.id, channels: {}, default: member.user.username })
                     newUser.channels.set(channelID, nickname)
                     await newUser.save()
-                    
+
                     logCN(channelID, channelName, userID, userName, nickname)
                     member.setNickname(nickname)
                 }
 
                 await interaction.reply({ content: ":white_check_mark: Nickname Set! :white_check_mark:", ephemeral: true })
             }
-            catch (error){
+            catch (error) {
                 console.error(error)
                 await interaction.reply({ content: ":x: Something went wrong! Oops! Get <@275348412797550595> to have a look. :x:", ephemeral: false })
             }
@@ -118,25 +142,25 @@ client.on('interactionCreate', async (interaction) => {
 
         case "cnreset":
 
-            const row = new ActionRowBuilder()
+            const resetRow = new ActionRowBuilder()
                 .addComponents(
                     new ButtonBuilder()
                         .setCustomId('resetYes')
                         .setLabel('Yes')
                         .setStyle(ButtonStyle.Success),
-                        new ButtonBuilder()
+                    new ButtonBuilder()
                         .setCustomId('resetNo')
                         .setLabel('No')
                         .setStyle(ButtonStyle.Danger)
                 )
 
-            await interaction.reply( {content: 'Are you sure you want to reset all nicknames?', components: [row], ephemeral: true})
-        
+            await interaction.reply({ content: 'Are you sure you want to reset all nicknames?', components: [resetRow], ephemeral: true })
+
             break
 
         case "cndefault":
 
-            if (nickname == null || nickname == "" || nickname.length < 2 || nickname.length > 32){
+            if (nickname == null || nickname == "" || nickname.length < 2 || nickname.length > 32) {
                 await interaction.reply({ content: ":x: Sorry! Nicknames must be between 2 and 32 characters long. :x:", ephemeral: true })
                 return
             }
@@ -145,15 +169,15 @@ client.on('interactionCreate', async (interaction) => {
                 return
             }
 
-            var user = await User.findOne({userID: userID})
+            var user = await User.findOne({ userID: userID })
 
-            if (user != null){
+            if (user != null) {
                 user.default = nickname
                 await user.save()
                 logCND(userID, userName, nickname)
             }
-            else{
-                user = new User({userID: userID, channels: {}, default: nickname})
+            else {
+                user = new User({ userID: userID, channels: {}, default: nickname })
                 await user.save()
                 logCND(userID, userName, nickname)
             }
@@ -163,72 +187,139 @@ client.on('interactionCreate', async (interaction) => {
             await interaction.reply({ content: ":white_check_mark: Default Nickname Set! :white_check_mark:", ephemeral: true })
             break
         case "cnhelp":
-            await interaction.reply({ content: ":grey_question: Channel Nickname Bot Help! :grey_question: \n/cn {nickname}- Set nickname for current voice channel. \n/cndefault {nickname} - Set default nickname for when you are not in a nicknamed channel. \n/cnreset - Reset all stored nicknames for yourself. \n/cnhelp - View this help message.\n\n:tada: Meme Commands :tada:\n/gank {jungler} - Moan at the jungler who didn't gank you!\n/egirl {daddy} - Moan at dadddy", ephemeral: true })
+            await interaction.reply({ content: ":grey_question: Channel Nickname Bot Help! :grey_question: \n/cn {nickname}- Set nickname for current voice channel. \n/cndefault {nickname} - Set default nickname for when you are not in a nicknamed channel. \n/cnreset - Reset all stored nicknames for yourself. \n/cnhelp - View this help message.\n\n:tada: Meme Commands :tada:\n/gank {jungler} - Moan at the jungler who didn't gank you!\n/egirl {daddy} - Moan at dadddy \n/lolquiz - Try your hand at the LoL Champion quiz!", ephemeral: true })
             break
 
         case "gank":
             const jungler = interaction.options.get('jungler').value
             await interaction.reply({ content: `:person_facepalming: <@${jungler}> why you no gank <@${userID}> :person_facepalming:`, ephemeral: false })
             break
-            
+
         case "egirl":
             const daddy = interaction.options.get('daddy').value
             await interaction.reply({ content: `✿乂◕‿◕乂 NYA <@${daddy}> SENPAI 乂◕‿◕乂✿`, ephemeral: false })
+            break
+
+        case "lolquiz":
+            if (currentChampion == -1) {
+
+                const number = Math.floor(Math.random() * championData.championNames.length)
+                currentChampion = number
+
+                const quizRow = new ActionRowBuilder()
+                    .addComponents(
+                        new ButtonBuilder()
+                            .setCustomId('quizGuess')
+                            .setLabel('Guess')
+                            .setStyle(ButtonStyle.Success),
+                        new ButtonBuilder()
+                            .setCustomId('quizGiveUp')
+                            .setLabel('Give Up')
+                            .setStyle(ButtonStyle.Danger)
+                    )
+
+                const blurb = championData.championValues[number].blurb
+                const quizText = `:clipboard: League of Legends Champion Quiz :clipboard: \n\nChampion Tags: ||${championData.championValues[number].tags}||\nResource Type: ||${championData.championValues[number].partype}||\nBlurb: ||${blurb.replace(championData.championNames[number], "REDACTED")}||\nTitle: ||${championData.championValues[number].title}||\n\nTake your guess by clicking below!`
+
+                await interaction.reply({ content: `${quizText}`, components: [quizRow] })
+            }
+            else {
+                await interaction.reply({ content: ":x: A quiz is already running! Please complete prior quiz before starting a new one! :x:", ephemeral: true })
+            }
             break
     }
 })
 
 // Button Interactions
 client.on('interactionCreate', async (interaction) => {
-	if (!interaction.isButton()) return;
+    if (!interaction.isButton() && !interaction.isModalSubmit()) return;
 
     const userID = interaction.user.id
     const userName = interaction.member.user.tag
     const ownerID = interaction.member.guild.ownerID
-	
-    switch(interaction.customId){
+    const channelID = interaction.channelId
+
+    switch (interaction.customId) {
         case "resetYes":
 
-            await User.deleteMany({userID: userID})
-            
+            await User.deleteMany({ userID: userID })
+
             if (userID != ownerID) interaction.member.setNickname("")
 
             logCNR(userID, userName)
 
-            await interaction.update( {content: "Your nicknames have been reset! :white_check_mark:", components: [], ephemeral: true})
+            await interaction.update({ content: "Your nicknames have been reset! :white_check_mark:", components: [], ephemeral: true })
             break
 
         case "resetNo":
-            await interaction.update( {content: "Your nicknames have not been reset! :negative_squared_cross_mark:", components: [], ephemeral: true})
+            await interaction.update({ content: "Your nicknames have not been reset! :negative_squared_cross_mark:", components: [], ephemeral: true })
+            break
+
+        case "quizGuess":
+            const modal = new ModalBuilder()
+                .setCustomId('quizModal')
+                .setTitle("Make your guess!")
+
+            const guessInput = new TextInputBuilder()
+                .setCustomId('guessInput')
+                .setLabel("Guess")
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true)
+                .setValue("")
+
+            const row = new ActionRowBuilder().addComponents(guessInput);
+            modal.addComponents(row)
+
+            await interaction.showModal(modal);
+            break
+
+        case "quizGiveUp":
+            await interaction.update({ content: `:x: You gave up :x:\n\nThe answer was... ***${championData.championNames[currentChampion]}***`, components: [] })
+            currentChampion = -1;
+            break
+
+        case "quizModal":
+            const guess = interaction.fields.getTextInputValue("guessInput");
+
+            if (guess.toLowerCase() == championData.championNames[currentChampion].toLowerCase()) {
+                await interaction.update({content: `This quiz is over! See answer below :arrow_down:`, components: []})
+                
+                const channel = client.channels.cache.get(channelID)
+                channel.send(`:white_check_mark: You got it right! :white_check_mark:\n\n The answer was... ***${championData.championNames[currentChampion]}***`)
+                currentChampion = -1;
+            }
+            else {
+                await interaction.reply({ content: `:x: ${guess} is not correct... :x:`})
+            }
             break
     }
 
-    
+
 });
 
-client.on("voiceStateUpdate", async function(oldMember, newMember){
+client.on("voiceStateUpdate", async function (oldMember, newMember) {
 
     const userID = newMember.member.id
     const userName = newMember.member.user.tag
     const channelID = newMember.channelId
-    const user = await User.findOne({userID: userID})
+    const user = await User.findOne({ userID: userID })
 
-    if (user != null){
-        
-        if (channelID == null){
+    if (user != null) {
+
+        if (channelID == null) {
             newMember.member.setNickname(user.default)
             //channelID, channelName, userID, userName, nickname
             logVC("DEFAULT", "DEFAULT", userID, userName, user.default)
             return
         }
-        
+
         const channelName = newMember.channel.name
 
-        if (user.channels.get(channelID) != null){
+        if (user.channels.get(channelID) != null) {
             newMember.member.setNickname(user.channels.get(channelID))
             logVC(channelID, channelName, userID, userName, user.channels.get(channelID))
         }
-        else{
+        else {
             newMember.member.setNickname(user.default)
             logVC(channelID, channelName, userID, userName, user.default)
         }
