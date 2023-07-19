@@ -11,7 +11,7 @@
   "dependencies": {
     "axios": "^1.1.2",
     "discord.js": "^14.5.0",
-    "mongoose": "^6.6.5"
+    "mongoose": "^6.11.3"
   },
   "devDependencies": {
     "dotenv": "^8.6.0",
