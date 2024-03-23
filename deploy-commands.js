@@ -40,10 +40,23 @@ const commands = [
                 .setDescription("The daddy you want to 'nya' at")
                 .setRequired(true)),
     new SlashCommandBuilder()
-                .setName('lolquiz')
-                .setDescription('Try your hand at the LoL Champion quiz!'),
-]
-	.map(command => command.toJSON());
+        .setName('lolquiz')
+        .setDescription('Try your hand at the LoL Champion quiz!'),
+    new SlashCommandBuilder()
+        .setName('whisper')
+        .setDescription('[Deprecated]')
+        .addUserOption(option => 
+            option.setName("user")
+                .setDescription("[Deprecated]")
+                .setRequired(true)),
+    new SlashCommandBuilder()
+        .setName('sorry')
+        .setDescription("Add to a user's sorry count")
+        .addUserOption(option =>
+            option.setName("user")
+                .setDescription("User who said sorry")
+                .setRequired(true))
+].map(command => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(token);
 

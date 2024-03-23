@@ -2,7 +2,7 @@ if (process.env.NODE_ENV !== 'production') {
     require('dotenv').config()
 }
 
-const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, codeBlock, ModalBuilder, TextInputBuilder, TextInputStyle, ActivityType } = require("discord.js")
+const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, ActivityType } = require("discord.js")
 const mongoose = require('mongoose')
 const axios = require('axios');
 
@@ -24,10 +24,14 @@ const userSchema = new mongoose.Schema({
     default: {
         type: String,
         required: false
+    },
+    sorry: {
+        type: Number,
+        required: false
     }
 })
 
-const User = mongoose.model('User', userSchema)
+const UserSchema = mongoose.model('User', userSchema)
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildPresences] });
 
@@ -45,7 +49,7 @@ function setupLOLQuiz() {
                     var championValues = Object.values(responseData)
 
                     championData = { championNames, championValues }
-                    console.log(`[SETUP] Loaded ${championNames.length} champions from DataDragon!\n`)
+                    console.log(`[SETUP] Loaded ${championNames.length} champions from DataDragon!`)
                 })
                 .catch(function (error) {
                     console.log(error)
@@ -91,7 +95,7 @@ client.on('interactionCreate', async (interaction) => {
     const userID = interaction.user.id
     const userName = interaction.member.user.tag
     const ownerID = member.guild.ownerId
-    const voiceState = member.guild.voiceStates.cache.get(interaction.user.id)
+    const voiceState = member.guild.voiceStates.cache.get(userID)
 
     switch (interaction.commandName) {
         case "cn":
@@ -106,7 +110,7 @@ client.on('interactionCreate', async (interaction) => {
             }
 
             try {
-                var user = await User.findOne({ userID: userID })
+                var user = await UserSchema.findOne({ userID: userID })
 
                 if (voiceState == null) {
                     await interaction.reply({ content: ":x: You must be in a voice channel to use this command. :x:", ephemeral: true })
@@ -124,7 +128,7 @@ client.on('interactionCreate', async (interaction) => {
                     member.setNickname(nickname)
                 }
                 else {
-                    var newUser = new User({ userID: member.id, channels: {}, default: member.user.username })
+                    var newUser = new UserSchema({ userID: member.id, channels: {}, default: member.user.username })
                     newUser.channels.set(channelID, nickname)
                     await newUser.save()
 
@@ -169,7 +173,7 @@ client.on('interactionCreate', async (interaction) => {
                 return
             }
 
-            var user = await User.findOne({ userID: userID })
+            var user = await UserSchema.findOne({ userID: userID })
 
             if (user != null) {
                 user.default = nickname
@@ -177,7 +181,7 @@ client.on('interactionCreate', async (interaction) => {
                 logCND(userID, userName, nickname)
             }
             else {
-                user = new User({ userID: userID, channels: {}, default: nickname })
+                user = new UserSchema({ userID: userID, channels: {}, default: nickname })
                 await user.save()
                 logCND(userID, userName, nickname)
             }
@@ -227,6 +231,40 @@ client.on('interactionCreate', async (interaction) => {
                 await interaction.reply({ content: ":x: A quiz is already running! Please complete prior quiz before starting a new one! :x:", ephemeral: true })
             }
             break
+
+        case "whisper":
+            await interaction.reply({ content: "Oops! This command isn't ready yet. Please try again later", ephemeral: true})
+            // var chosenUser = interaction.options.get('user').value
+            // console.log(chosenUser);
+            // const users = member.guild.members.cache.filter(member => member.voice.channel)
+            // console.log(users);
+
+            // for (var user in users){
+            //     var uID = user.user.id
+            //     if (uID =! userID && uID != chosenUser){
+            //         var userVoiceState = member.guild.voiceStates.cache.get(uID);
+            //         console.log(userVoiceState);
+            //         userVoiceState.setMute(true,"You were muted by the /whisper command!");
+            //         userVoiceState.setDeaf(true,"You were deafened by the /whisper command!");
+            //     }
+            // }
+            // await interaction.reply("Test")
+            break
+
+        case "sorry":
+            var sorryUser = interaction.options.getUser('user').id
+            var user = await UserSchema.findOne({ userID: sorryUser })
+            
+            var sorryCount = user.sorry
+            if (sorryCount === undefined){
+                sorryCount = 1
+            } else {
+                sorryCount += 1
+            }
+            user.sorry = sorryCount
+            await user.save();
+
+            interaction.reply(`<@${sorryUser}> has now said sorry ${sorryCount} times! Tut tut`)
     }
 })
 
@@ -242,7 +280,7 @@ client.on('interactionCreate', async (interaction) => {
     switch (interaction.customId) {
         case "resetYes":
 
-            await User.deleteMany({ userID: userID })
+            await UserSchema.deleteMany({ userID: userID })
 
             if (userID != ownerID) interaction.member.setNickname("")
 
@@ -299,28 +337,35 @@ client.on('interactionCreate', async (interaction) => {
 
 client.on("voiceStateUpdate", async function (oldMember, newMember) {
 
-    const userID = newMember.member.id
-    const userName = newMember.member.user.tag
+    const member = newMember.member
+    const userID = member.id
+    const ownerID = member.guild.ownerId
+    const userName = member.user.tag
     const channelID = newMember.channelId
-    const user = await User.findOne({ userID: userID })
+    const channelName = channelID != null ? newMember.channel.name : "Not in Channel"
+    console.log(channelName)
+    const user = await UserSchema.findOne({ userID: userID })
+
+    if (userID == ownerID){
+        console.log(`[INFO] ${userID} (${userName}) joined voice channel ${channelID} (${channelName}) and was not assigned a nickname due to being the server owner.`)
+        return
+    }
 
     if (user != null) {
 
         if (channelID == null) {
-            newMember.member.setNickname(user.default)
+            member.setNickname(user.default)
             //channelID, channelName, userID, userName, nickname
             logVC("DEFAULT", "DEFAULT", userID, userName, user.default)
             return
         }
 
-        const channelName = newMember.channel.name
-
         if (user.channels.get(channelID) != null) {
-            newMember.member.setNickname(user.channels.get(channelID))
+            member.setNickname(user.channels.get(channelID))
             logVC(channelID, channelName, userID, userName, user.channels.get(channelID))
         }
         else {
-            newMember.member.setNickname(user.default)
+            member.setNickname(user.default)
             logVC(channelID, channelName, userID, userName, user.default)
         }
     }
