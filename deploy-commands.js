@@ -6,24 +6,24 @@ const client_id = process.env.CLIENT_ID;
 
 const commands = [
 	new SlashCommandBuilder()
-        .setName('cn')
+        .setName('nickname')
         .setDescription('Set nickname for current voice channel')
         .addStringOption(option => 
             option.setName("nickname")
                 .setDescription("The nickname for your currently connected voice channel")
                 .setRequired(true)),
     new SlashCommandBuilder()
-        .setName('cndefault')
+        .setName('default')
         .setDescription('Set default nickname')
         .addStringOption(option => 
             option.setName("nickname")
                 .setDescription("The default nickname for when you are not connected to a voice channel")
                 .setRequired(true)),
     new SlashCommandBuilder()
-        .setName('cnreset')
+        .setName('reset')
         .setDescription('Reset all your nicknames'),
     new SlashCommandBuilder()
-        .setName('cnhelp')
+        .setName('help')
         .setDescription('View all commmands for Channel Nickname Bot'),
     new SlashCommandBuilder()
         .setName('gank')
@@ -43,13 +43,6 @@ const commands = [
         .setName('lolquiz')
         .setDescription('Try your hand at the LoL Champion quiz!'),
     new SlashCommandBuilder()
-        .setName('whisper')
-        .setDescription('[Deprecated]')
-        .addUserOption(option => 
-            option.setName("user")
-                .setDescription("[Deprecated]")
-                .setRequired(true)),
-    new SlashCommandBuilder()
         .setName('sorry')
         .setDescription("Add to a user's sorry count")
         .addUserOption(option =>
@@ -58,7 +51,7 @@ const commands = [
                 .setRequired(true))
 ].map(command => command.toJSON());
 
-const rest = new REST({ version: '10' }).setToken(token);
+const rest = new REST().setToken(token);
 
 rest.put(Routes.applicationCommands(client_id), { body: commands })
 	.then((data) => console.log(`Successfully registered ${data.length} application commands.`))

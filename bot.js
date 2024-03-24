@@ -7,9 +7,9 @@ const mongoose = require('mongoose')
 const axios = require('axios');
 
 
-mongoose.connect(process.env.DB_URL, { useNewUrlParser: true, useUnifiedTopology: true })
+mongoose.connect(process.env.DB_URL)
 const db = mongoose.connection
-db.on('error', (error) => console.log("Database error: " + error))
+db.on('error', (error) => console.log("[ERROR] Database error: " + error))
 db.once('open', () => console.log("[SETUP] Database connected!"))
 
 const userSchema = new mongoose.Schema({
@@ -52,11 +52,11 @@ function setupLOLQuiz() {
                     console.log(`[SETUP] Loaded ${championNames.length} champions from DataDragon!`)
                 })
                 .catch(function (error) {
-                    console.log(error)
+                    console.log(`[ERROR] ${error}`)
                 });
         })
         .catch(function (error) {
-            console.log(error)
+            console.log(`[ERROR] ${error}`)
         })
 }
 
@@ -98,7 +98,7 @@ client.on('interactionCreate', async (interaction) => {
     const voiceState = member.guild.voiceStates.cache.get(userID)
 
     switch (interaction.commandName) {
-        case "cn":
+        case "nickname":
 
             if (nickname == null || nickname == "" || nickname.length < 2 || nickname.length > 32) {
                 await interaction.reply({ content: ":x: Sorry! Nicknames must be between 2 and 32 characters long. :x:", ephemeral: true })
@@ -112,7 +112,7 @@ client.on('interactionCreate', async (interaction) => {
             try {
                 var user = await UserSchema.findOne({ userID: userID })
 
-                if (voiceState == null) {
+                if (voiceState == null || voiceState.channelId == null) {
                     await interaction.reply({ content: ":x: You must be in a voice channel to use this command. :x:", ephemeral: true })
                     return
                 }
@@ -144,7 +144,7 @@ client.on('interactionCreate', async (interaction) => {
             }
             break
 
-        case "cnreset":
+        case "reset":
 
             const resetRow = new ActionRowBuilder()
                 .addComponents(
@@ -162,7 +162,7 @@ client.on('interactionCreate', async (interaction) => {
 
             break
 
-        case "cndefault":
+        case "default":
 
             if (nickname == null || nickname == "" || nickname.length < 2 || nickname.length > 32) {
                 await interaction.reply({ content: ":x: Sorry! Nicknames must be between 2 and 32 characters long. :x:", ephemeral: true })
@@ -190,18 +190,13 @@ client.on('interactionCreate', async (interaction) => {
 
             await interaction.reply({ content: ":white_check_mark: Default Nickname Set! :white_check_mark:", ephemeral: true })
             break
-        case "cnhelp":
-            await interaction.reply({ content: ":grey_question: Channel Nickname Bot Help! :grey_question: \n/cn {nickname}- Set nickname for current voice channel. \n/cndefault {nickname} - Set default nickname for when you are not in a nicknamed channel. \n/cnreset - Reset all stored nicknames for yourself. \n/cnhelp - View this help message.\n\n:tada: Meme Commands :tada:\n/gank {jungler} - Moan at the jungler who didn't gank you!\n/egirl {daddy} - Moan at dadddy \n/lolquiz - Try your hand at the LoL Champion quiz!", ephemeral: true })
+        case "help":
+            await interaction.reply({ content: ":grey_question: Channel Nickname Bot Help! :grey_question: \n/nickname {nickname}- Set nickname for current voice channel. \n/default {nickname} - Set default nickname for when you are not in a nicknamed channel. \n/reset - Reset all stored nicknames for yourself. \n/help - View this help message.\n\n:tada: Meme Commands :tada:\n/gank {jungler} - Moan at the jungler who didn't gank you! \n/sorry {user} - Add to a user's sorry counter \n/lolquiz - Try your hand at the LoL Champion quiz! ", ephemeral: true })
             break
 
         case "gank":
             const jungler = interaction.options.get('jungler').value
             await interaction.reply({ content: `:person_facepalming: <@${jungler}> why you no gank <@${userID}> :person_facepalming:`, ephemeral: false })
-            break
-
-        case "egirl":
-            const daddy = interaction.options.get('daddy').value
-            await interaction.reply({ content: `✿乂◕‿◕乂 NYA <@${daddy}> SENPAI 乂◕‿◕乂✿`, ephemeral: false })
             break
 
         case "lolquiz":
@@ -230,25 +225,6 @@ client.on('interactionCreate', async (interaction) => {
             else {
                 await interaction.reply({ content: ":x: A quiz is already running! Please complete prior quiz before starting a new one! :x:", ephemeral: true })
             }
-            break
-
-        case "whisper":
-            await interaction.reply({ content: "Oops! This command isn't ready yet. Please try again later", ephemeral: true})
-            // var chosenUser = interaction.options.get('user').value
-            // console.log(chosenUser);
-            // const users = member.guild.members.cache.filter(member => member.voice.channel)
-            // console.log(users);
-
-            // for (var user in users){
-            //     var uID = user.user.id
-            //     if (uID =! userID && uID != chosenUser){
-            //         var userVoiceState = member.guild.voiceStates.cache.get(uID);
-            //         console.log(userVoiceState);
-            //         userVoiceState.setMute(true,"You were muted by the /whisper command!");
-            //         userVoiceState.setDeaf(true,"You were deafened by the /whisper command!");
-            //     }
-            // }
-            // await interaction.reply("Test")
             break
 
         case "sorry":
@@ -343,7 +319,6 @@ client.on("voiceStateUpdate", async function (oldMember, newMember) {
     const userName = member.user.tag
     const channelID = newMember.channelId
     const channelName = channelID != null ? newMember.channel.name : "Not in Channel"
-    console.log(channelName)
     const user = await UserSchema.findOne({ userID: userID })
 
     if (userID == ownerID){
