@@ -1,8 +1,5 @@
-if (process.env.NODE_ENV !== "production") {
-  require("dotenv").config();
-}
-
-const {
+import dotenv from "dotenv";
+import {
   Client,
   GatewayIntentBits,
   ActionRowBuilder,
@@ -12,9 +9,15 @@ const {
   TextInputBuilder,
   TextInputStyle,
   ActivityType,
-} = require("discord.js");
-const mongoose = require("mongoose");
-const axios = require("axios");
+} from "discord.js";
+import mongoose from "mongoose";
+import axios from "axios";
+import dns from "node:dns/promises";
+dns.setServers(["1.1.1.1"]);
+
+if (process.env.NODE_ENV !== "production") {
+  dotenv.config({ quiet: true });
+}
 
 mongoose.connect(process.env.DB_URL);
 const db = mongoose.connection;
@@ -62,16 +65,16 @@ function setupLOLQuiz() {
 
       axios
         .get(
-          `http://ddragon.leagueoflegends.com/cdn/${ddVersion}/data/en_US/champion.json`
+          `http://ddragon.leagueoflegends.com/cdn/${ddVersion}/data/en_US/champion.json`,
         )
         .then(function (response) {
-          responseData = response.data.data;
+          var responseData = response.data.data;
           var championNames = Object.keys(responseData);
           var championValues = Object.values(responseData);
 
           championData = { championNames, championValues };
           console.log(
-            `[SETUP] Loaded ${championNames.length} champions from DataDragon!`
+            `[SETUP] Loaded ${championNames.length} champions from DataDragon!`,
           );
         })
         .catch(function (error) {
@@ -85,19 +88,19 @@ function setupLOLQuiz() {
 
 function logVC(channelID, channelName, userID, userName, nickname) {
   console.info(
-    `[INFO] ${userID} (${userName}) joined voice channel ${channelID} (${channelName}) and was assigned nickname '${nickname}'.`
+    `[INFO] ${userID} (${userName}) joined voice channel ${channelID} (${channelName}) and was assigned nickname '${nickname}'.`,
   );
 }
 
 function logCN(channelID, channelName, userID, userName, nickname) {
   console.info(
-    `[INFO] ${userID} (${userName}) asssigned nickname '${nickname}' to ${channelID} (${channelName}).`
+    `[INFO] ${userID} (${userName}) asssigned nickname '${nickname}' to ${channelID} (${channelName}).`,
   );
 }
 
 function logCND(userID, userName, nickname) {
   console.info(
-    `[INFO] ${userID} (${userName}) asssigned default nickname '${nickname}'.`
+    `[INFO] ${userID} (${userName}) asssigned default nickname '${nickname}'.`,
   );
 }
 
@@ -203,7 +206,7 @@ client.on("interactionCreate", async (interaction) => {
         new ButtonBuilder()
           .setCustomId("resetNo")
           .setLabel("No")
-          .setStyle(ButtonStyle.Danger)
+          .setStyle(ButtonStyle.Danger),
       );
 
       await interaction.reply({
@@ -277,7 +280,7 @@ client.on("interactionCreate", async (interaction) => {
     case "lolquiz":
       if (currentChampion == -1) {
         const number = Math.floor(
-          Math.random() * championData.championNames.length
+          Math.random() * championData.championNames.length,
         );
         currentChampion = number;
 
@@ -289,7 +292,7 @@ client.on("interactionCreate", async (interaction) => {
           new ButtonBuilder()
             .setCustomId("quizGiveUp")
             .setLabel("Give Up")
-            .setStyle(ButtonStyle.Danger)
+            .setStyle(ButtonStyle.Danger),
         );
 
         const blurb = championData.championValues[number].blurb;
@@ -299,7 +302,7 @@ client.on("interactionCreate", async (interaction) => {
           championData.championValues[number].partype
         }||\nBlurb: ||${blurb.replace(
           championData.championNames[number],
-          "REDACTED"
+          "REDACTED",
         )}||\nTitle: ||${
           championData.championValues[number].title
         }||\n\nTake your guess by clicking below!`;
@@ -331,7 +334,7 @@ client.on("interactionCreate", async (interaction) => {
       await user.save();
 
       interaction.reply(
-        `<@${sorryUser}> has now said sorry ${sorryCount} times! Tut tut`
+        `<@${sorryUser}> has now said sorry ${sorryCount} times! Tut tut`,
       );
   }
 });
@@ -409,7 +412,7 @@ client.on("interactionCreate", async (interaction) => {
 
         const channel = client.channels.cache.get(channelID);
         channel.send(
-          `:white_check_mark: You got it right! :white_check_mark:\n\n The answer was... ***${championData.championNames[currentChampion]}***`
+          `:white_check_mark: You got it right! :white_check_mark:\n\n The answer was... ***${championData.championNames[currentChampion]}***`,
         );
         currentChampion = -1;
       } else {
@@ -433,7 +436,7 @@ client.on("voiceStateUpdate", async function (oldMember, newMember) {
 
   if (userID == ownerID) {
     console.log(
-      `[INFO] ${userID} (${userName}) joined voice channel ${channelID} (${channelName}) and was not assigned a nickname due to being the server owner.`
+      `[INFO] ${userID} (${userName}) joined voice channel ${channelID} (${channelName}) and was not assigned a nickname due to being the server owner.`,
     );
     return;
   }
@@ -453,7 +456,7 @@ client.on("voiceStateUpdate", async function (oldMember, newMember) {
         channelName,
         userID,
         userName,
-        user.channels.get(channelID)
+        user.channels.get(channelID),
       );
     } else {
       member.setNickname(user.default);
